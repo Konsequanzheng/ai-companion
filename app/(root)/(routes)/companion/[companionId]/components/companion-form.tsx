@@ -101,7 +101,7 @@ const CompanionForm = ({ initialData, categories }: CompanionFormProps) => {
         await axios.post("/api/companion", values);
       }
       toast({
-        description: "Susccess.",
+        description: "Success.",
       });
       router.refresh(); // refreshes all server components, ensures that the newest companion that was just created is added
       router.push("/");
@@ -159,7 +159,7 @@ const CompanionForm = ({ initialData, categories }: CompanionFormProps) => {
                     />
                   </FormControl>
                   <FormDescription>
-                    This is how your AI companion will be named.
+                    This is how your AI companion will be named
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -245,8 +245,8 @@ const CompanionForm = ({ initialData, categories }: CompanionFormProps) => {
                     />
                   </FormControl>
                   <FormDescription>
-                    Describe in detail your companion's backstory and relevant
-                    details
+                    Describe in detail your companion&apos;s backstory and
+                    relevant details
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
