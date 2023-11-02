@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"] // this line enables search
 }
 
 datasource db {
@@ -9,7 +10,27 @@ datasource db {
 }
 
 model Category {
-  id        String @id @default(uuid())
-  name      String
+  id              String @id @default(uuid())
+  name            String
+  companions      Companion[]
 }
 
+model Companion {
+  id              String @id @default(uuid())
+  userId          String
+  userName        String
+  src             String
+  name            String @db.Text // @db.Text decorator enables much longer character lengths and makes it searchable
+  description     String
+  instructions    String @db.Text
+  seed            String @db.Text
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  category        Category @relation(fields: [categoryId], references: [id])
+  categoryId      String
+
+  @@index([categoryId]) // need because prisma doesn't support foreign keys (see relation)
+  @@fulltext([name]) // enables full text search on name
+}
