@@ -31,6 +31,27 @@ model Companion {
   category        Category @relation(fields: [categoryId], references: [id])
   categoryId      String
 
+  messages        Message[]
+
   @@index([categoryId]) // need because prisma doesn't support foreign keys (see relation)
   @@fulltext([name]) // enables full text search on name
+}
+
+enum Role {
+  user
+  system
+}
+
+model Message {
+  id              String @id @default(uuid())
+  role            Role
+  content         String @db.Text
+  createdAt       DateTime @default(now())
+
+  companionId     String
+  userId          String
+
+  companion       Companion @relation(fields: [companionId], references: [id], onDelete: Cascade) // cascade means that once a companion is deleted, the associated messages will also be deleted
+
+  @@index([companionId])
 }
