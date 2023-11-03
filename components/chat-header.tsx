@@ -1,7 +1,6 @@
 "use client";
 
-import { Companion } from "@prisma/client";
-import { Message } from "postcss";
+import { Companion, Message } from "@prisma/client";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import {
