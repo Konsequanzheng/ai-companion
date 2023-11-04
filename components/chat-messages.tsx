@@ -46,7 +46,7 @@ const ChatMessages = ({
           key={message.content}
           role={message.role}
           content={message.content}
-          src={message.src}
+          src={companion.src}
         />
       ))}
       {/* if the ai message is loading, show a fake message with the loading spinner */}

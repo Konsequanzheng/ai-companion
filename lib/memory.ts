@@ -56,34 +56,35 @@ export class MemoryManager {
       MemoryManager.instance = new MemoryManager();
       await MemoryManager.instance.init();
     }
-
     return MemoryManager.instance;
   }
 
-  private generatedRedisCompanionKey(companionKey: CompanionKey): string {
+  private generateRedisCompanionKey(companionKey: CompanionKey): string {
     return `${companionKey.companionName}-${companionKey.modelName}-${companionKey.userId}`;
   }
 
   public async writeToHistory(text: string, companionKey: CompanionKey) {
-    if (!companionKey || typeof companionKey.userId === "undefined") {
+    if (!companionKey || typeof companionKey.userId == "undefined") {
       console.log("Companion key set incorrectly");
       return "";
     }
 
-    const key = this.generatedRedisCompanionKey(companionKey);
+    const key = this.generateRedisCompanionKey(companionKey);
     const result = await this.history.zadd(key, {
       score: Date.now(),
       member: text,
     });
+
+    return result;
   }
 
   public async readLatestHistory(companionKey: CompanionKey): Promise<string> {
-    if (!companionKey || typeof companionKey.userId === "undefined") {
+    if (!companionKey || typeof companionKey.userId == "undefined") {
       console.log("Companion key set incorrectly");
       return "";
     }
 
-    const key = this.generatedRedisCompanionKey(companionKey);
+    const key = this.generateRedisCompanionKey(companionKey);
     let result = await this.history.zrange(key, 0, Date.now(), {
       byScore: true,
     });
@@ -94,19 +95,18 @@ export class MemoryManager {
   }
 
   public async seedChatHistory(
-    seedContent: string,
+    seedContent: String,
     delimiter: string = "\n",
     companionKey: CompanionKey
   ) {
-    const key = this.generatedRedisCompanionKey(companionKey);
-
+    const key = this.generateRedisCompanionKey(companionKey);
     if (await this.history.exists(key)) {
       console.log("User already has chat history");
+      return;
     }
 
     const content = seedContent.split(delimiter);
     let counter = 0;
-
     for (const line of content) {
       await this.history.zadd(key, { score: counter, member: line });
       counter += 1;
