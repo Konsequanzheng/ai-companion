@@ -1,13 +1,15 @@
+import dotenv from "dotenv";
 import { StreamingTextResponse, LangChainStream } from "ai";
 import { auth, currentUser } from "@clerk/nextjs";
-import { CallbackManager } from "langchain/callbacks";
 import { Replicate } from "langchain/llms/replicate";
+import { CallbackManager } from "langchain/callbacks";
 import { NextResponse } from "next/server";
 
 import { MemoryManager } from "@/lib/memory";
 import { rateLimit } from "@/lib/rate-limit";
 import prismadb from "@/lib/prismadb";
-import { Stream } from "stream";
+
+dotenv.config({ path: `.env` });
 
 export async function POST(
   request: Request,
@@ -17,20 +19,17 @@ export async function POST(
     const { prompt } = await request.json();
     const user = await currentUser();
 
-    // check if user is logged in
     if (!user || !user.firstName || !user.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const identifier = request.url + "-" + user.id; // create url that we check the rate limit with for this user
-    const { success } = await rateLimit(identifier); // check if ratelimit is not exceeded
+    const identifier = request.url + "-" + user.id;
+    const { success } = await rateLimit(identifier);
 
     if (!success) {
-      return new NextResponse("Rate limit exceeded");
+      return new NextResponse("Rate limit exceeded", { status: 429 });
     }
 
-    // this database query is for the db to show the chat to users,
-    // not related to memory of the model
     const companion = await prismadb.companion.update({
       where: {
         id: params.chatId,
@@ -54,38 +53,41 @@ export async function POST(
     const companion_file_name = name + ".txt";
 
     const companionKey = {
-      companionName: name,
-      userId: user.id, // userId here makes sure that we only consider the context with the currently logged in user
+      companionName: name!,
+      userId: user.id,
       modelName: "llama2-13b",
     };
 
     const memoryManager = await MemoryManager.getInstance();
-    const records = await memoryManager.readLatestHistory(companionKey);
 
+    const records = await memoryManager.readLatestHistory(companionKey);
     if (records.length === 0) {
       await memoryManager.seedChatHistory(companion.seed, "\n\n", companionKey);
     }
 
-    // now we're adding the prompt to our vector database (memory)
-    await memoryManager.writeToHistory("User" + prompt + "\n", companionKey);
-    // get recent messages
+    await memoryManager.writeToHistory("User: " + prompt + "\n", companionKey);
+    // Query Pinecone
+
     const recentChatHistory = await memoryManager.readLatestHistory(
       companionKey
     );
-    // get related chat messages from *any time before*
+    console.log(recentChatHistory);
+
+    // Right now the preamble is included in the similarity search, but that
+    // shouldn't be an issue
+
     const similarDocs = await memoryManager.vectorSearch(
       recentChatHistory,
       companion_file_name
     );
+    console.log("2");
 
     let relevantHistory = "";
-
     if (!!similarDocs && similarDocs.length !== 0) {
       relevantHistory = similarDocs.map((doc) => doc.pageContent).join("\n");
     }
-
     const { handlers } = LangChainStream();
-
+    // Call Replicate for inference
     const model = new Replicate({
       model:
         "a16z-infra/llama-2-13b-chat:df7690f1994d94e96ad9d568eac121aecf50684a0b0963b25a41cc40061269e5",
@@ -95,42 +97,39 @@ export async function POST(
       apiKey: process.env.REPLICATE_API_TOKEN,
       callbackManager: CallbackManager.fromHandlers(handlers),
     });
+    console.log("3");
 
+    // Turn verbose on for debugging
     model.verbose = true;
 
     const resp = String(
       await model
         .call(
           `
-            ONLY generate plain sentences without prefix of who is speaking. DO NOT use ${name}: prefix.
+        ONLY generate plain sentences without prefix of who is speaking. DO NOT use ${companion.name}: prefix. 
 
-            ${companion.instructions}
+        ${companion.instructions}
 
-            Below are the relevant details about ${name}'s past and the conversation you are in.
-            ${relevantHistory}
+        Below are relevant details about ${companion.name}'s past and the conversation you are in.
+        ${relevantHistory}
 
-            ${recentChatHistory}\n${name}
-        `
+
+        ${recentChatHistory}\n${companion.name}:`
         )
         .catch(console.error)
     );
+    console.log("4");
 
-    // remove all commas because for some reason the model likes to respond with a lot of commas
     const cleaned = resp.replaceAll(",", "");
-    const chunks = cleaned.split("/n");
+    const chunks = cleaned.split("\n");
     const response = chunks[0];
 
-    // add AI response to history
     await memoryManager.writeToHistory("" + response.trim(), companionKey);
-
-    // ???
     var Readable = require("stream").Readable;
 
     let s = new Readable();
     s.push(response);
     s.push(null);
-    // ???
-
     if (response !== undefined && response.length > 1) {
       memoryManager.writeToHistory("" + response.trim(), companionKey);
 
@@ -152,7 +151,6 @@ export async function POST(
 
     return new StreamingTextResponse(s);
   } catch (error) {
-    console.log("[CHAT POST]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
