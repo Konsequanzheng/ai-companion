@@ -33,7 +33,7 @@
     "next": "14.0.1",
     "next-cloudinary": "^5.2.0",
     "next-themes": "^0.2.1",
-    "openai": "^4.15.0",
+    "openai": "^3.3.0",
     "openai-edge": "^1.2.2",
     "query-string": "^8.1.0",
     "react": "^18",
@@ -41,6 +41,7 @@
     "react-hook-form": "^7.47.0",
     "react-spinners": "^0.13.8",
     "replicate": "^0.20.1",
+    "stripe": "^14.3.0",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.22.4"
