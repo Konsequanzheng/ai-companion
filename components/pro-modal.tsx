@@ -1,9 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import React, { useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 import { useProModal } from "@/hooks/use-pro-modal";
-import { DialogDescription } from "@radix-ui/react-dialog";
 import { Separator } from "./ui/separator";
 import { Button } from "./ui/button";
 import { useToast } from "./ui/use-toast";
@@ -14,6 +19,11 @@ const ProModal = () => {
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const onSubscribe = async () => {
     try {
@@ -31,6 +41,11 @@ const ProModal = () => {
       setLoading(false);
     }
   };
+
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <Dialog open={proModal.isOpen} onOpenChange={proModal.onClose}>
       <DialogContent>
